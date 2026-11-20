@@ -1,0 +1,791 @@
+/* ===== PENGATURAN (silakan ubah) ===== */
+const ADMIN_PIN = "admin123";                 // PIN untuk masuk Mode Admin
+const STORAGE_KEY = "ular_tangga_soal_v2";    // v2: soal pilihan ganda sekarang A sampai E
+const LADDERS = { 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100 };
+const SNAKES = { 17: 7, 54: 34, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 79 };
+const COLORS = ["#c8202f", "#2f8f83", "#e8b931", "#5b4fc4"];
+const SNAKE_COLORS = ["#c8202f", "#2f8f83", "#5b4fc4", "#d9822b"];
+const LETTERS = "ABCDE";                      // huruf pilihan jawaban
+const NOPT = 5;                               // jumlah pilihan (A-E)
+
+/* ===== SOAL BAWAAN: ORDE BARU ===== */
+// t: "mc" = pilihan ganda (o = 5 pilihan A-E, a = indeks jawaban benar 0-4)
+// t: "fill" = isian singkat (a = jawaban, pisahkan dengan | bila lebih dari satu)
+const DEFAULT_Q = [
+  { t: "mc", q: "Siapa presiden Indonesia yang memimpin pada masa Orde Baru?", o: ["Soekarno", "B.J. Habibie", "Abdurrahman Wahid", "Megawati Soekarnoputri", "Soeharto"], a: 4, e: "Soeharto berkuasa sejak 1966-1967 sampai 1998, kira-kira 32 tahun." },
+  { t: "mc", q: "Tiga Tuntutan Rakyat (Tritura) tahun 1966 antara lain menuntut...", o: ["Pembubaran PKI", "Pembubaran Konstituante", "Pemilu dipercepat", "Pembentukan Nasakom", "Penghapusan Dwifungsi ABRI"], a: 0, e: "Isi Tritura: bubarkan PKI, bersihkan kabinet dari unsur PKI, dan turunkan harga." },
+  { t: "mc", q: "Surat Perintah 11 Maret 1966 (Supersemar) memberi wewenang kepada Letjen Soeharto untuk...", o: ["Membubarkan DPR", "Menyatakan perang kepada Malaysia", "Memulihkan keamanan dan ketertiban", "Mengganti UUD 1945", "Menjadi presiden seumur hidup"], a: 2, e: "Supersemar menjadi dasar Soeharto mengambil tindakan untuk memulihkan keamanan dan ketertiban." },
+  { t: "fill", q: "Repelita adalah singkatan dari Rencana Pembangunan ... (lengkapi dua kata terakhir).", a: "lima tahun|5 tahun", e: "Repelita I dimulai pada tahun 1969." },
+  { t: "mc", q: "Manakah yang termasuk bagian dari Trilogi Pembangunan?", o: ["Nasionalisasi seluruh perusahaan asing", "Penghapusan seluruh utang luar negeri", "Pembubaran seluruh partai politik", "Stabilitas nasional yang dinamis", "Penghentian pembangunan lima tahunan"], a: 3, e: "Trilogi Pembangunan: stabilitas nasional yang dinamis, pertumbuhan ekonomi tinggi, dan pemerataan pembangunan beserta hasilnya." },
+  { t: "mc", q: "Gelar yang diberikan kepada Soeharto atas jasanya di bidang pembangunan adalah...", o: ["Bapak Proklamator", "Bapak Koperasi", "Bapak Pendidikan", "Bapak Pers", "Bapak Pembangunan Nasional"], a: 4, e: "Gelar Bapak Pembangunan Nasional diberikan oleh MPR pada tahun 1983." },
+  { t: "mc", q: "Indonesia mencapai swasembada beras pada tahun...", o: ["1969", "1971", "1978", "1984", "1998"], a: 3, e: "Keberhasilan swasembada beras 1984 mendapat penghargaan dari FAO pada tahun 1985." },
+  { t: "fill", q: "Program pemerintah Orde Baru untuk menekan laju pertumbuhan penduduk disingkat...", a: "kb|keluarga berencana", e: "KB dijalankan oleh BKKBN dengan slogan 'Dua anak cukup'." },
+  { t: "mc", q: "Peran ABRI di bidang pertahanan-keamanan sekaligus sosial-politik pada masa Orde Baru dikenal dengan istilah...", o: ["Nasakom", "Manipol USDEK", "Trias Politika", "Dwifungsi ABRI", "Dwikora"], a: 3, e: "Dwifungsi ABRI membuat militer ikut berperan dalam pemerintahan dan politik." },
+  { t: "mc", q: "Pada tahun 1973 partai-partai disederhanakan menjadi dua partai dan satu golongan karya. Dua partai itu adalah...", o: ["PNI dan NU", "Masyumi dan PSI", "PKI dan Parkindo", "Golkar dan PPP", "PPP dan PDI"], a: 4, e: "PPP merupakan gabungan partai-partai Islam, sedangkan PDI gabungan partai nasionalis dan Kristen/Katolik." },
+  { t: "fill", q: "Golongan Karya, peserta pemilu yang selalu menang pada masa Orde Baru, disingkat...", a: "golkar", e: "Golkar memenangkan seluruh pemilu Orde Baru dari 1971 sampai 1997." },
+  { t: "mc", q: "Kebijakan asas tunggal pada tahun 1980-an mewajibkan partai dan organisasi kemasyarakatan berasaskan...", o: ["Islam", "Sosialisme", "Demokrasi Terpimpin", "Pancasila", "Nasionalisme"], a: 3, e: "Asas tunggal Pancasila diwajibkan bagi partai politik dan organisasi kemasyarakatan." },
+  { t: "mc", q: "P4 yang ditetapkan pada masa Orde Baru kepanjangannya adalah...", o: ["Panitia Persiapan Pemilu Pancasila", "Pusat Pendidikan Politik Pancasila", "Program Pembangunan Pertanian Pedesaan", "Pedoman Penghayatan dan Pengamalan Pancasila", "Pedoman Perilaku Pegawai Pemerintah"], a: 3, e: "P4 juga dikenal sebagai Eka Prasetya Pancakarsa dan ditetapkan lewat TAP MPR No. II/MPR/1978." },
+  { t: "mc", q: "ASEAN berdiri tahun 1967 di Bangkok. Menteri Luar Negeri Indonesia yang ikut menandatangani Deklarasi Bangkok adalah...", o: ["Soebandrio", "Ali Sastroamidjojo", "Mohammad Hatta", "Sutan Sjahrir", "Adam Malik"], a: 4, e: "Adam Malik mewakili Indonesia dalam penandatanganan Deklarasi Bangkok." },
+  { t: "mc", q: "Pemilu pertama pada masa Orde Baru diselenggarakan pada tahun...", o: ["1955", "1966", "1977", "1982", "1971"], a: 4, e: "Pemilu 1971 diikuti sepuluh peserta: sembilan partai dan Golkar." },
+  { t: "mc", q: "Indonesia kembali menjadi anggota PBB pada tahun...", o: ["1965", "1966", "1969", "1971", "1975"], a: 1, e: "Indonesia keluar dari PBB pada Januari 1965 dan bergabung kembali pada September 1966." },
+  { t: "mc", q: "Peristiwa Malari (Malapetaka Lima Belas Januari) 1974 terjadi saat kunjungan Perdana Menteri dari negara...", o: ["Belanda", "Malaysia", "Amerika Serikat", "Jepang", "Australia"], a: 3, e: "Demonstrasi mahasiswa saat kunjungan PM Jepang Kakuei Tanaka berujung kerusuhan di Jakarta." },
+  { t: "mc", q: "Krisis ekonomi yang memicu runtuhnya Orde Baru terjadi pada tahun...", o: ["1985-1986", "1965-1966", "2008", "1997-1998", "1979-1980"], a: 3, e: "Krisis moneter 1997-1998 melemahkan rupiah dan memicu gelombang demonstrasi besar." },
+  { t: "mc", q: "Peristiwa Trisakti 12 Mei 1998 adalah...", o: ["Pemberontakan DI/TII", "Penculikan para jenderal", "Peristiwa Malari", "Pemberontakan PRRI/Permesta", "Penembakan mahasiswa saat demonstrasi menuntut reformasi"], a: 4, e: "Empat mahasiswa Universitas Trisakti tewas tertembak dalam demonstrasi tersebut." },
+  { t: "fill", q: "Soeharto menyatakan berhenti sebagai presiden pada tanggal 21 Mei tahun...", a: "1998", e: "Pengunduran diri Soeharto menandai berakhirnya Orde Baru dan dimulainya Reformasi." },
+  { t: "fill", q: "Siapa wakil presiden yang menggantikan Soeharto sebagai presiden pada tahun 1998?", a: "habibie|b.j. habibie|bj habibie|b.j habibie", e: "B.J. Habibie dilantik menjadi presiden setelah Soeharto mundur." }
+];
+
+/* ===== UTILITAS ===== */
+const VBH = 1130;                       // tinggi kanvas papan (papan 1000 + area mulai)
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rand = (a, b) => a + Math.random() * (b - a);
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+const pxScale = () => $("boardWrap").clientWidth / 1000;
+
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const t = amt < 0 ? 0 : 255, k = Math.abs(amt);
+  r = Math.round(r + (t - r) * k); g = Math.round(g + (t - g) * k); b = Math.round(b + (t - b) * k);
+  return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
+/* ===== SUARA (dibuat dengan WebAudio, tanpa file) ===== */
+const Sound = (() => {
+  let ctx = null;
+  let on = true;
+  try { on = localStorage.getItem("ut_suara") !== "mati"; } catch (e) { /* abaikan */ }
+  const ensure = () => {
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  };
+  const tone = (f, t0, dur, type = "sine", vol = 0.1, slideTo) => {
+    if (!on) return;
+    const c = ensure(); if (!c) return;
+    const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + t0;
+    o.type = type;
+    o.frequency.setValueAtTime(f, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  };
+  return {
+    isOn: () => on,
+    set(v) { on = v; try { localStorage.setItem("ut_suara", v ? "hidup" : "mati"); } catch (e) { /* abaikan */ } if (v) ensure(); },
+    step() { tone(480 + Math.random() * 60, 0, 0.07, "triangle", 0.07); },
+    roll() { for (let i = 0; i < 9; i++) tone(180 + Math.random() * 260, i * 0.09, 0.05, "square", 0.035); },
+    ok() { tone(660, 0, 0.12, "triangle", 0.11); tone(880, 0.1, 0.2, "triangle", 0.11); },
+    bad() { tone(200, 0, 0.3, "sawtooth", 0.07, 90); },
+    ladder() { [392, 494, 587, 784, 988].forEach((f, i) => tone(f, i * 0.09, 0.14, "triangle", 0.1)); },
+    snake() { tone(740, 0, 0.9, "sawtooth", 0.06, 110); },
+    win() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, i * 0.13, 0.22, "triangle", 0.12)); }
+  };
+})();
+
+/* ===== BIDAK (SVG, bentuknya beda untuk tiap pemain) ===== */
+let uidCount = 0;
+function pieceSVG(i, name, w) {
+  const base = COLORS[i % 4], lt = shade(base, 0.5), dk = shade(base, -0.5), id = "g" + (++uidCount);
+  const nm = (name || "").trim();
+  const num = /^Pemain\s*(\d)$/i.exec(nm);
+  const ch = esc(num ? num[1] : (nm.charAt(0).toUpperCase() || "?"));
+  const defs = `<defs><radialGradient id="${id}" cx=".35" cy=".28" r=".95"><stop offset="0" stop-color="${lt}"/><stop offset=".55" stop-color="${base}"/><stop offset="1" stop-color="${dk}"/></radialGradient></defs>`;
+  const st = `fill="url(#${id})" stroke="${dk}" stroke-width="2" stroke-linejoin="round"`;
+  const txt = (x, y, size) => `<text x="${x}" y="${y}" text-anchor="middle" font-family="Alfa Slab One, Georgia, serif" font-size="${size}" fill="#fff" stroke="${dk}" stroke-width="2.6" paint-order="stroke" stroke-linejoin="round">${ch}</text>`;
+  let art = "";
+  switch (i % 4) {
+    case 0: // pion catur
+      art = `<ellipse cx="32" cy="82" rx="23" ry="5.5" fill="${dk}"/>
+        <path d="M11 81 C11 73 18 71 21 69 C24 62 26 54 26 47 C19 45 18 40 21 37 L43 37 C46 40 45 45 38 47 C38 54 40 62 43 69 C46 71 53 73 53 81 Z" ${st}/>
+        <ellipse cx="32" cy="37" rx="15" ry="4.8" fill="${lt}" stroke="${dk}" stroke-width="2"/>
+        <circle cx="32" cy="22" r="14.5" ${st}/>
+        <ellipse cx="26" cy="16" rx="5" ry="3.3" fill="#fff" opacity=".55" transform="rotate(-25 26 16)"/>
+        ${txt(32, 66, 15)}`;
+      break;
+    case 1: // orang (meeple)
+      art = `<ellipse cx="32" cy="82" rx="24" ry="5" fill="${dk}"/>
+        <path d="M32 6 C25.5 6 21 10.5 21 16.5 C21 20.5 23 23.5 26 25.5 C19 27 6 31 6 39 C6 44 10 46.5 15 46 C17 52 14 68 9 76 C8 79.5 10.5 82 14 82 L50 82 C53.5 82 56 79.5 55 76 C50 68 47 52 49 46 C54 46.5 58 44 58 39 C58 31 45 27 38 25.5 C41 23.5 43 20.5 43 16.5 C43 10.5 38.5 6 32 6 Z" ${st}/>
+        <ellipse cx="27" cy="13" rx="4.5" ry="3" fill="#fff" opacity=".55" transform="rotate(-25 27 13)"/>
+        ${txt(32, 66, 16)}`;
+      break;
+    case 2: // roket
+      art = `<ellipse cx="32" cy="82" rx="21" ry="4.5" fill="${dk}"/>
+        <path d="M21 58 L8 79 L23 74 Z" fill="${dk}" stroke="${dk}" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M43 58 L56 79 L41 74 Z" fill="${dk}" stroke="${dk}" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M32 3 C45 14 47 36 45 72 L19 72 C17 36 19 14 32 3 Z" ${st}/>
+        <path d="M19.5 56 L44.5 56 L44.8 64 L19.2 64 Z" fill="#fff" opacity=".3"/>
+        <circle cx="32" cy="31" r="9.5" fill="#fff" stroke="${dk}" stroke-width="2.2"/>
+        <path d="M26 74 Q32 88 38 74 Z" fill="#ffb703" stroke="#d9822b" stroke-width="1.5"/>
+        <text x="32" y="36" text-anchor="middle" font-family="Alfa Slab One, Georgia, serif" font-size="13" fill="${dk}">${ch}</text>`;
+      break;
+    default: // mahkota
+      art = `<ellipse cx="32" cy="82" rx="24" ry="5" fill="${dk}"/>
+        <path d="M11 81 L53 81 L49 70 L15 70 Z" ${st}/>
+        <path d="M14 70 L9 28 L22 43 L32 18 L42 43 L55 28 L50 70 Z" ${st}/>
+        <circle cx="9" cy="26" r="4.6" fill="#fff" stroke="${dk}" stroke-width="2"/>
+        <circle cx="32" cy="15" r="5" fill="#fff" stroke="${dk}" stroke-width="2"/>
+        <circle cx="55" cy="26" r="4.6" fill="#fff" stroke="${dk}" stroke-width="2"/>
+        <ellipse cx="24" cy="50" rx="3" ry="6" fill="#fff" opacity=".35" transform="rotate(12 24 50)"/>
+        ${txt(32, 64, 17)}`;
+  }
+  return `<svg viewBox="0 0 64 88" ${w ? `width="${w}"` : ""} aria-hidden="true">${defs}${art}</svg>`;
+}
+
+/* ===== STATE ===== */
+let questions = loadQuestions();
+let deck = [];
+let players = [], cur = 0, busy = false, over = false, askAll = false, editIndex = -1;
+const cellEls = [];
+
+function validQ(q) {
+  if (!q || typeof q.q !== "string" || !q.q.trim()) return false;
+  if (q.t === "mc") return Array.isArray(q.o) && q.o.length === NOPT && Number.isInteger(q.a) && q.a >= 0 && q.a < NOPT;
+  if (q.t === "fill") return typeof q.a === "string" && q.a.trim() !== "";
+  return false;
+}
+function loadQuestions() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.every(validQ)) return data;
+    }
+  } catch (e) { /* abaikan */ }
+  return JSON.parse(JSON.stringify(DEFAULT_Q));
+}
+function saveQuestions() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); } catch (e) { alert("Soal tidak bisa disimpan di browser ini."); }
+  deck = [];
+}
+
+/* ===== PAPAN ===== */
+function center(n) {
+  const i = n - 1, row = Math.floor(i / 10);
+  let col = i % 10;
+  if (row % 2) col = 9 - col;
+  return { x: col * 100 + 50, y: (9 - row) * 100 + 50 };
+}
+function buildBoard() {
+  const b = $("board");
+  b.innerHTML = "";
+  cellEls.length = 0;
+  for (let r = 9; r >= 0; r--) {
+    for (let c = 0; c < 10; c++) {
+      const n = r * 10 + (r % 2 ? 9 - c : c) + 1;
+      const d = document.createElement("div");
+      d.className = "cell" + ((r + c) % 2 ? " alt" : "") + (LADDERS[n] ? " tangga" : "") + (SNAKES[n] ? " ular" : "") + (n === 100 ? " finish" : "");
+      const num = document.createElement("b");
+      num.textContent = n;
+      d.appendChild(num);
+      if (n === 100) { const f = document.createElement("em"); f.textContent = "Finish"; d.appendChild(f); }
+      cellEls[n] = d;
+      b.appendChild(d);
+    }
+  }
+  drawOverlay();
+}
+function flashCell(n) {
+  const el = cellEls[n];
+  if (!el || REDUCED) return;
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 750);
+}
+
+function snakeGeom(a, b) {
+  const p = center(a), q = center(b);
+  const dx = q.x - p.x, dy = q.y - p.y, l = Math.hypot(dx, dy) || 1;
+  const nx = (-dy / l) * 70, ny = (dx / l) * 70;
+  return { p, q, c1: { x: p.x + dx / 3 + nx, y: p.y + dy / 3 + ny }, c2: { x: p.x + (2 * dx) / 3 - nx, y: p.y + (2 * dy) / 3 - ny } };
+}
+function bez(g, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * u * g.p.x + 3 * u * u * t * g.c1.x + 3 * u * t * t * g.c2.x + t * t * t * g.q.x,
+    y: u * u * u * g.p.y + 3 * u * u * t * g.c1.y + 3 * u * t * t * g.c2.y + t * t * t * g.q.y
+  };
+}
+function ladderSVG(a, b, idx) {
+  const p = center(a), q = center(b);
+  const dx = q.x - p.x, dy = q.y - p.y, l = Math.hypot(dx, dy);
+  const ux = dx / l, uy = dy / l, nx = -uy * 15, ny = ux * 15;
+  const ln = (x1, y1, x2, y2, stroke, w, extra = "") => `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" ${extra}/>`;
+  let s = "<g>";
+  [1, -1].forEach((k) => { s += ln(p.x + nx * k + 4, p.y + ny * k + 6, q.x + nx * k + 4, q.y + ny * k + 6, "#000", 12, 'opacity=".22"'); });
+  const rungs = Math.floor(l / 46);
+  for (let i = 1; i <= rungs; i++) {
+    const t = (i * 46) / l, cx = p.x + dx * t, cy = p.y + dy * t;
+    s += ln(cx + nx, cy + ny, cx - nx, cy - ny, "#5d3a14", 9);
+    s += ln(cx + nx, cy + ny, cx - nx, cy - ny, "#c58a45", 5);
+  }
+  [1, -1].forEach((k) => {
+    s += ln(p.x + nx * k, p.y + ny * k, q.x + nx * k, q.y + ny * k, "#5d3a14", 13);
+    s += ln(p.x + nx * k, p.y + ny * k, q.x + nx * k, q.y + ny * k, "#b07a3f", 8);
+  });
+  s += ln(p.x + nx, p.y + ny, q.x + nx, q.y + ny, "#fff", 3, `class="glint" style="--L:${Math.round(l)};animation-delay:${(-idx * 0.6).toFixed(1)}s" stroke-opacity=".75" stroke-dasharray="16 4000"`);
+  return s + "</g>";
+}
+function snakeSVG(a, b, idx) {
+  const g = snakeGeom(a, b), col = SNAKE_COLORS[idx % SNAKE_COLORS.length], dk = shade(col, -0.45), lt = shade(col, 0.5);
+  const d = `M${g.p.x} ${g.p.y} C${g.c1.x} ${g.c1.y},${g.c2.x} ${g.c2.y},${g.q.x} ${g.q.y}`;
+  const ang = (Math.atan2(g.c1.y - g.p.y, g.c1.x - g.p.x) * 180) / Math.PI;
+  let s = `<g class="snake" style="animation-delay:${(-idx * 0.7).toFixed(1)}s">`;
+  s += `<path d="${d}" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="22" stroke-linecap="round" transform="translate(4 6)"/>`;
+  s += `<path d="${d}" fill="none" stroke="${dk}" stroke-width="22" stroke-linecap="round"/>`;
+  s += `<path d="${d}" fill="none" stroke="${col}" stroke-width="16" stroke-linecap="round"/>`;
+  s += `<path d="${d}" fill="none" stroke="${lt}" stroke-opacity=".8" stroke-width="6" stroke-linecap="round" stroke-dasharray="0.1 24"/>`;
+  s += `<g transform="translate(${g.p.x} ${g.p.y}) rotate(${ang.toFixed(1)})">`;
+  s += `<g class="tongue"><path d="M-20 0 L-36 0 M-36 0 L-45 -7 M-36 0 L-45 7" fill="none" stroke="#e11d2e" stroke-width="3" stroke-linecap="round"/></g>`;
+  s += `<ellipse cx="0" cy="0" rx="25" ry="19" fill="${col}" stroke="${dk}" stroke-width="3"/>`;
+  s += `<circle cx="-7" cy="-9" r="5.5" fill="#fff"/><circle cx="-7" cy="9" r="5.5" fill="#fff"/>`;
+  s += `<circle cx="-8.5" cy="-9" r="2.6" fill="#10193a"/><circle cx="-8.5" cy="9" r="2.6" fill="#10193a"/>`;
+  s += `</g></g>`;
+  return s;
+}
+function drawOverlay() {
+  let s = "";
+  Object.entries(LADDERS).forEach(([a, b], i) => { s += ladderSVG(+a, b, i); });
+  Object.entries(SNAKES).forEach(([a, b], i) => { s += snakeSVG(+a, b, i); });
+  $("overlay").innerHTML = s;
+}
+
+/* ===== BIDAK DI PAPAN ===== */
+const OFFS = [[-26, -12], [26, -12], [-26, 14], [26, 14]];
+function feetXY(i) {
+  const p = players[i];
+  if (p.pos === 0) return { x: 70 + i * 82, y: 1090 };
+  const c = center(p.pos);
+  const mates = [];
+  players.forEach((q, j) => { if (q.pos === p.pos) mates.push(j); });
+  let ox = 0, oy = 0;
+  if (mates.length > 1) [ox, oy] = OFFS[mates.indexOf(i) % 4];
+  return { x: c.x + ox, y: c.y + 24 + oy };
+}
+function place(i, pt, settle) {
+  const p = players[i], el = p.el;
+  p.x = pt.x; p.y = pt.y;
+  if (settle && !REDUCED) {
+    el.classList.add("settle");
+    clearTimeout(p.st);
+    p.st = setTimeout(() => el.classList.remove("settle"), 350);
+  } else {
+    el.classList.remove("settle");
+  }
+  el.style.left = pt.x / 10 + "%";
+  el.style.top = (pt.y / VBH) * 100 + "%";
+  el.style.zIndex = Math.round(pt.y);
+}
+function layout(except) {
+  players.forEach((p, i) => { if (i !== except) place(i, feetXY(i), true); });
+}
+function buildPawns() {
+  const box = $("pawns");
+  box.innerHTML = "";
+  players.forEach((p, i) => {
+    const el = document.createElement("div");
+    el.className = "pawn";
+    el.style.setProperty("--c", p.color);
+    el.innerHTML = `<div class="pshadow"></div><div class="pbody"><div class="pidle">${pieceSVG(i, p.name)}</div><span class="ptag">${esc(p.name)}</span></div>`;
+    p.el = el;
+    box.appendChild(el);
+    place(i, feetXY(i), false);
+    if (!REDUCED) el.querySelector(".pbody").animate(
+      [{ transform: "translateY(-140px) scale(.8)", opacity: 0 }, { transform: "translateY(0) scale(1)", opacity: 1 }],
+      { duration: 520, delay: i * 130, easing: "cubic-bezier(.3,1.4,.5,1)", fill: "backwards" });
+  });
+}
+function setActive() {
+  players.forEach((p, i) => p.el.classList.toggle("active", i === cur && !over));
+}
+function renderPlayers() {
+  $("players").innerHTML = players.map((p, i) =>
+    `<div class="pl ${i === cur && !over ? "turn" : ""}" style="--c:${p.color}"><span class="pfig">${pieceSVG(i, p.name, 34)}</span>
+      <div class="pmain"><div class="pname">${esc(p.name)}</div><div class="pbar"><i style="width:${p.pos}%"></i></div></div>
+      <small>Kotak ${p.pos} | Benar ${p.ok}</small></div>`).join("");
+}
+
+/* ===== EFEK ===== */
+function emit(container, left, top, k, o = {}) {
+  if (REDUCED) return;
+  const n = o.n || 14, cols = o.colors || ["#e8b931", "#fff4c2", "#ffffff"];
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("span");
+    el.className = "spark" + (Math.random() < 0.4 ? " star" : "");
+    const s = rand(6, 13) * (o.size || 1);
+    el.style.cssText = `left:${left};top:${top};width:${s}px;height:${s}px;background:${cols[i % cols.length]}`;
+    const ang = Math.random() * Math.PI * 2, dist = (o.spread || 70) * k * (0.5 + Math.random() * 0.9);
+    const dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist - (o.lift || 0) * k + (o.gravity || 30) * k;
+    container.appendChild(el);
+    const a = el.animate([
+      { transform: "translate(-50%,-50%) scale(1) rotate(0deg)", opacity: 1 },
+      { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.2) rotate(${rand(-260, 260)}deg)`, opacity: 0 }
+    ], { duration: rand(520, 980), easing: "cubic-bezier(.15,.7,.3,1)" });
+    a.onfinish = () => el.remove();
+  }
+}
+function sparkles(x, y, o) { emit($("fx"), x / 10 + "%", (y / VBH) * 100 + "%", pxScale(), o); }
+function ring(x, y, color, size = 80) {
+  if (REDUCED) return;
+  const el = document.createElement("span");
+  el.className = "ring";
+  const px = size * pxScale();
+  el.style.cssText = `left:${x / 10}%;top:${(y / VBH) * 100}%;width:${px}px;height:${px}px;--c:${color}`;
+  $("fx").appendChild(el);
+  const a = el.animate([
+    { transform: "translate(-50%,-50%) scale(.2)", opacity: 0.95 },
+    { transform: "translate(-50%,-50%) scale(1.9)", opacity: 0 }
+  ], { duration: 700, easing: "ease-out" });
+  a.onfinish = () => el.remove();
+}
+function floatText(text, x, y, color) {
+  const el = document.createElement("span");
+  el.className = "ftext";
+  el.textContent = text;
+  el.style.cssText = `left:${Math.min(Math.max(x / 10, 14), 86)}%;top:${(y / VBH) * 100}%;--c:${color}`;
+  $("fx").appendChild(el);
+  if (REDUCED) { el.style.transform = "translate(-50%,-50%)"; setTimeout(() => el.remove(), 1400); return; }
+  const a = el.animate([
+    { transform: "translate(-50%,-50%) translateY(0) scale(.5)", opacity: 0 },
+    { transform: "translate(-50%,-50%) translateY(-18px) scale(1.15)", opacity: 1, offset: 0.25 },
+    { transform: "translate(-50%,-50%) translateY(-70px) scale(1)", opacity: 0 }
+  ], { duration: 1500, easing: "ease-out" });
+  a.onfinish = () => el.remove();
+}
+function shake(el, amp = 6) {
+  if (REDUCED) return;
+  el.animate([
+    { transform: "translate(0,0)" }, { transform: `translate(${-amp}px,${amp / 2}px)` },
+    { transform: `translate(${amp}px,${-amp / 2}px)` }, { transform: `translate(${-amp / 2}px,0)` }, { transform: "translate(0,0)" }
+  ], { duration: 420, easing: "ease-in-out" });
+}
+function landSquash(i) {
+  if (REDUCED) return;
+  players[i].el.querySelector(".pbody").animate(
+    [{ transform: "scale(1.16,.8)" }, { transform: "scale(.96,1.06)", offset: 0.6 }, { transform: "scale(1,1)" }],
+    { duration: 260, easing: "ease-out" });
+}
+function confetti() {
+  if (REDUCED) return;
+  const cv = $("confetti"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = window.innerWidth, H = window.innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
+  cv.classList.add("on");
+  const cols = ["#e8b931", "#c8202f", "#2f8f83", "#5b4fc4", "#ffffff", "#ff8fa3"], ps = [];
+  const wave = (left) => {
+    for (let k = 0; k < 70; k++) {
+      const ang = (left ? -Math.PI / 3 : (-2 * Math.PI) / 3) + (Math.random() - 0.5) * 0.7, sp = rand(11, 22);
+      ps.push({ x: left ? 0 : W, y: H * 0.95, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, w: rand(6, 12), h: rand(8, 16), r: rand(0, 6.28), vr: rand(-0.3, 0.3), c: cols[k % cols.length] });
+    }
+  };
+  wave(true); wave(false);
+  setTimeout(() => { wave(true); wave(false); }, 700);
+  const t0 = performance.now();
+  const loop = (now) => {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ps.forEach((p) => {
+      p.vy += 0.45; p.vx *= 0.992; p.vy *= 0.992; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 1.3)) + 1);
+      ctx.restore();
+    });
+    if (now - t0 < 5200 && ps.some((p) => p.y < H + 30)) requestAnimationFrame(loop);
+    else { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); cv.classList.remove("on"); }
+  };
+  requestAnimationFrame(loop);
+}
+
+/* ===== GERAK BIDAK ===== */
+function animateAlong(i, posFn, dur, o = {}) {
+  return new Promise((res) => {
+    const el = players[i].el, body = el.querySelector(".pbody");
+    if (REDUCED || dur <= 0) { place(i, posFn(1), false); return res(); }
+    const hpx = (o.hop || 0) * pxScale(), t0 = performance.now(), ease = o.ease || easeInOut;
+    let lastSpark = 0;
+    const frame = (now) => {
+      const t = Math.min(1, (now - t0) / dur), pt = posFn(ease(t)), s = Math.sin(Math.PI * t);
+      place(i, pt, false);
+      const hop = o.hop ? 1 : 0;
+      body.style.transform = `translateY(${-s * hpx}px) rotate(${(o.wobble || 0) * Math.sin(t * Math.PI * 6)}deg) scale(${1 - 0.05 * s * hop},${1 + 0.09 * s * hop})`;
+      if (o.spark && now - lastSpark > 55) { lastSpark = now; sparkles(pt.x, pt.y - 35, { n: 3, colors: o.spark, spread: 30, size: 0.8 }); }
+      if (t < 1) requestAnimationFrame(frame); else { body.style.transform = ""; res(); }
+    };
+    requestAnimationFrame(frame);
+  });
+}
+async function walk(i, target) {
+  const p = players[i];
+  while (p.pos < target) {
+    const from = { x: p.x, y: p.y };
+    p.pos++;
+    const to = feetXY(i);
+    layout(i);
+    await animateAlong(i, (e) => ({ x: lerp(from.x, to.x, e), y: lerp(from.y, to.y, e) }), 230, { hop: 42 });
+    Sound.step();
+    sparkles(to.x, to.y - 6, { n: 5, colors: ["#ffffff", "#e9e4d4"], spread: 26, size: 0.7, lift: 6, gravity: 10 });
+    landSquash(i);
+    flashCell(p.pos);
+  }
+  layout();
+}
+async function climb(i, to) {
+  const p = players[i], from = { x: p.x, y: p.y };
+  p.pos = to;
+  const dest = feetXY(i);
+  layout(i);
+  Sound.ladder();
+  ring(from.x, from.y - 20, "#e8b931", 90);
+  floatText("Naik tangga!", from.x, from.y - 80, "#e8b931");
+  await animateAlong(i, (e) => ({ x: lerp(from.x, dest.x, e), y: lerp(from.y, dest.y, e) }), 1250, { wobble: 5, spark: ["#e8b931", "#fff4c2", "#ffffff"] });
+  sparkles(dest.x, dest.y - 40, { n: 24, spread: 120, lift: 30 });
+  ring(dest.x, dest.y - 20, "#e8b931", 120);
+  landSquash(i);
+  flashCell(to);
+  layout();
+}
+async function bite(i, to) {
+  const p = players[i], g = snakeGeom(p.pos, to), from = { x: p.x, y: p.y };
+  const off = { x: from.x - g.p.x, y: from.y - g.p.y };
+  shake($("boardWrap"), 7);
+  ring(from.x, from.y - 20, "#c8202f", 110);
+  floatText("Digigit ular!", from.x, from.y - 80, "#ff6b78");
+  Sound.snake();
+  p.pos = to;
+  const dest = feetXY(i);
+  layout(i);
+  await animateAlong(i, (e) => {
+    const b = bez(g, e);
+    return { x: b.x + off.x * (1 - e) + (dest.x - g.q.x) * e, y: b.y + off.y * (1 - e) + (dest.y - g.q.y) * e };
+  }, 1400, { wobble: 9, spark: ["#c8202f", "#7a1019", "#ffb4b4"] });
+  sparkles(dest.x, dest.y - 30, { n: 12, colors: ["#c8202f", "#7a1019", "#ffb4b4"], spread: 70 });
+  landSquash(i);
+  flashCell(to);
+  layout();
+}
+
+/* ===== DADU 3D ===== */
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+const ROT = { 1: [0, 0], 2: [-90, 0], 3: [0, -90], 4: [0, 90], 5: [90, 0], 6: [0, 180] };
+let ax = 0, ay = 0;
+function buildDice() {
+  $("dice").innerHTML = [1, 2, 3, 4, 5, 6].map((n) =>
+    `<div class="face f${n}">${Array.from({ length: 9 }, (_, k) => `<i class="${PIPS[n].includes(k) ? "on" : ""}"></i>`).join("")}</div>`).join("");
+}
+function setDiceInstant(n) {
+  const cube = $("dice");
+  cube.style.transition = "none";
+  [ax, ay] = ROT[n];
+  cube.style.transform = `rotateX(${ax}deg) rotateY(${ay}deg)`;
+  void cube.offsetWidth;
+  cube.style.transition = "";
+  $("dice").setAttribute("aria-label", "Dadu menunjukkan " + n);
+}
+async function throwDice() {
+  const n = 1 + Math.floor(Math.random() * 6), [rx, ry] = ROT[n];
+  if (REDUCED) { setDiceInstant(n); return n; }
+  ax = rx + 360 * (Math.round(ax / 360) + 2 + (Math.random() < 0.5 ? 1 : 0));
+  ay = ry + 360 * (Math.round(ay / 360) + 2 + (Math.random() < 0.5 ? 1 : 0));
+  Sound.roll();
+  $("diceScene").animate([
+    { transform: "translateY(0) scale(1)" },
+    { transform: "translateY(-50px) scale(1.15)", offset: 0.4 },
+    { transform: "translateY(0) scale(1)", offset: 0.75 },
+    { transform: "translateY(-10px) scale(1.02)", offset: 0.88 },
+    { transform: "translateY(0) scale(1)" }
+  ], { duration: 1100, easing: "ease-out" });
+  $("dice").style.transform = `rotateX(${ax}deg) rotateY(${ay}deg)`;
+  await sleep(1150);
+  $("dice").setAttribute("aria-label", "Dadu menunjukkan " + n);
+  return n;
+}
+
+/* ===== ALUR PERMAINAN ===== */
+function setMsg(t) { $("msg").textContent = t; }
+
+async function rollDice() {
+  if (busy || over) return;
+  busy = true;
+  $("btnRoll").disabled = true;
+  $("btnQuit").disabled = true;
+  const i = cur, p = players[i];
+  const d = await throwDice();
+  if (p.pos + d > 100) {
+    setMsg(`${p.name} mendapat ${d}, tetapi harus tepat di kotak 100.`);
+    floatText("Harus pas!", p.x, p.y - 80, "#ffffff");
+    await sleep(1100);
+    return nextTurn();
+  }
+  setMsg(`${p.name} mendapat ${d}.`);
+  await walk(i, p.pos + d);
+  renderPlayers();
+  if (p.pos === 100) return win(p);
+
+  const kind = LADDERS[p.pos] ? "tangga" : SNAKES[p.pos] ? "ular" : "biasa";
+  if (kind === "biasa" && !askAll) return nextTurn();
+
+  const ok = await askQuestion(kind);
+  if (ok) p.ok++;
+  if (kind === "tangga" && ok) { setMsg(`${p.name} naik tangga ke kotak ${LADDERS[p.pos]}.`); await climb(i, LADDERS[p.pos]); }
+  else if (kind === "tangga") setMsg(`${p.name} gagal naik tangga.`);
+  else if (kind === "ular" && !ok) { setMsg(`${p.name} digigit ular dan turun ke kotak ${SNAKES[p.pos]}.`); await bite(i, SNAKES[p.pos]); }
+  else if (kind === "ular") { setMsg(`${p.name} selamat dari ular.`); floatText("Selamat!", p.x, p.y - 80, "#7be0d3"); sparkles(p.x, p.y - 40, { n: 14, spread: 80 }); }
+  else if (ok && p.pos + 2 <= 100) { setMsg(`${p.name} maju 2 kotak bonus.`); await walk(i, p.pos + 2); }
+  renderPlayers();
+  await sleep(450);
+  if (p.pos === 100) return win(p);
+  nextTurn();
+}
+function nextTurn() {
+  cur = (cur + 1) % players.length;
+  setActive();
+  renderPlayers();
+  const note = $("msg").textContent;
+  setMsg((note ? note + " " : "") + "Giliran " + players[cur].name + ".");
+  busy = false;
+  $("btnRoll").disabled = false;
+  $("btnQuit").disabled = false;
+}
+function win(p) {
+  over = true;
+  busy = false;
+  setActive();
+  renderPlayers();
+  $("btnQuit").disabled = false;
+  Sound.win();
+  confetti();
+  sparkles(p.x, p.y - 40, { n: 30, spread: 160, lift: 40 });
+  const rank = [...players].sort((a, b) => b.pos - a.pos || b.ok - a.ok);
+  showModal(`<h3>${esc(p.name)} menang!</h3><p class="mexp">Tiba di kotak 100 dengan ${p.ok} jawaban benar.</p>
+    <ol class="rank">${rank.map((x) => `<li>${esc(x.name)}: kotak ${x.pos}, ${x.ok} jawaban benar</li>`).join("")}</ol>
+    <div class="mrow"><button class="btn primary" id="mAgain" type="button">Main lagi</button><button class="btn ghost-dark" id="mMenu" type="button">Menu</button></div>`, "menang");
+  $("mAgain").onclick = () => { hideModal(); startGame(players.map((x) => x.name)); };
+  $("mMenu").onclick = () => { hideModal(); showView("setup"); };
+  $("mAgain").focus();
+}
+
+/* ===== PERTANYAAN ===== */
+function drawQuestion() {
+  if (!questions.length) return null;
+  if (!deck.length) {
+    deck = questions.map((_, i) => i);
+    for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+  }
+  return questions[deck.pop()];
+}
+const KIND = {
+  tangga: { t: "Tangga!", s: "Jawab dengan benar untuk naik", c: "#2f8f83", icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M8 3v20M18 3v20M8 8h10M8 13h10M8 18h10"/></svg>' },
+  ular: { t: "Ular!", s: "Jawab dengan benar untuk selamat", c: "#c8202f", icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M5 21c8 0 2-8 8-8s0-8 8-8"/><circle cx="21" cy="5" r="1.3" fill="#fff"/></svg>' },
+  biasa: { t: "Soal bonus", s: "Jawaban benar: maju 2 kotak", c: "#b98a14", icon: '<svg width="26" height="26" viewBox="0 0 26 26" fill="#fff"><path d="M13 2l3 7.4 8 .6-6.1 5.1 1.9 7.9L13 18.7 6.2 23l1.9-7.9L2 10l8-.6z"/></svg>' }
+};
+function askQuestion(kind) {
+  const q = drawQuestion();
+  if (!q) return Promise.resolve(kind === "tangga");
+  const K = KIND[kind];
+  return new Promise((resolve) => {
+    let html = `<div class="mhead"><span class="micon">${K.icon}</span><div><h3>${K.t}</h3><small>${K.s}</small></div></div><p class="mq">${esc(q.q)}</p>`;
+    if (q.t === "mc") html += q.o.map((o, i) => `<button class="opt" data-i="${i}" type="button">${LETTERS[i]}. ${esc(o)}</button>`).join("");
+    else html += `<input type="text" id="mAns" placeholder="Ketik jawabanmu" autocomplete="off" aria-label="Jawaban"><button class="btn primary" id="mSend" type="button">Jawab</button>`;
+    showModal(html, kind);
+    const box = $("modalBox");
+    const finish = (ok) => {
+      const benar = q.t === "mc" ? `${LETTERS[q.a]}. ${q.o[q.a]}` : q.a.split("|")[0];
+      box.insertAdjacentHTML("beforeend",
+        `<p class="hasil ${ok ? "benar" : "salah"}">${ok ? "Benar!" : "Salah. Jawaban: " + esc(benar)}</p>${q.e ? `<p class="mexp">${esc(q.e)}</p>` : ""}<button class="btn primary" id="mNext" type="button">Lanjut</button>`);
+      if (ok) { Sound.ok(); emit(box.querySelector(".mfx"), "50%", "30%", 1, { n: 22, spread: 170, colors: [K.c, "#e8b931", "#ffffff"], gravity: 60 }); }
+      else { Sound.bad(); shake(box, 9); }
+      box.classList.remove("ok", "no");
+      void box.offsetWidth;
+      box.classList.add(ok ? "ok" : "no");
+      $("mNext").focus();
+      $("mNext").onclick = () => { hideModal(); resolve(ok); };
+    };
+    if (q.t === "mc") {
+      document.querySelectorAll(".opt").forEach((b) => b.onclick = () => {
+        const i = +b.dataset.i;
+        document.querySelectorAll(".opt").forEach((x) => (x.disabled = true));
+        document.querySelector(`.opt[data-i="${q.a}"]`).classList.add("benar");
+        if (i !== q.a) b.classList.add("salah");
+        finish(i === q.a);
+      });
+    } else {
+      const send = () => {
+        const v = $("mAns").value.trim().toLowerCase();
+        if (!v) return;
+        $("mAns").disabled = true; $("mSend").remove();
+        finish(q.a.toLowerCase().split("|").map((s) => s.trim()).includes(v));
+      };
+      $("mSend").onclick = send;
+      $("mAns").onkeydown = (e) => { if (e.key === "Enter") send(); };
+      $("mAns").focus();
+    }
+  });
+}
+function showModal(html, kind) {
+  const box = $("modalBox");
+  box.className = "modal-box k-" + (kind || "biasa");
+  box.innerHTML = html + '<div class="mfx"></div>';
+  $("modal").classList.remove("hidden");
+}
+function hideModal() { $("modal").classList.add("hidden"); }
+
+/* ===== MENU & TAMPILAN ===== */
+function showView(v) {
+  ["setup", "game", "admin"].forEach((id) => $(id).classList.toggle("hidden", id !== v));
+  if (v === "setup") $("qCount").textContent = `${questions.length} pertanyaan tersedia.` + (questions.length ? "" : " Tambahkan soal lewat Mode Admin.");
+}
+function renderNameInputs() {
+  const n = +$("numPlayers").value;
+  const old = [...document.querySelectorAll(".pname-in")].map((x) => x.value);
+  $("nameInputs").innerHTML = Array.from({ length: n }, (_, i) => {
+    const v = old[i] || "Pemain " + (i + 1);
+    return `<label class="nrow"><span class="nfig">${pieceSVG(i, v, 38)}</span><span class="ntxt">Nama pemain ${i + 1}<input type="text" class="pname-in" maxlength="16" value="${esc(v)}"></span></label>`;
+  }).join("");
+}
+function startGame(names) {
+  players = names.map((n, i) => ({ name: n, pos: 0, ok: 0, x: 0, y: 0, color: COLORS[i] }));
+  cur = 0; busy = false; over = false; deck = [];
+  askAll = $("askAll").checked;
+  showView("game");
+  buildBoard();
+  buildPawns();
+  renderPlayers();
+  setActive();
+  buildDice();
+  setDiceInstant(1);
+  $("btnRoll").disabled = false;
+  $("btnQuit").disabled = false;
+  setMsg("Giliran pertama: " + players[0].name + ". Lempar dadu!");
+}
+
+/* ===== MODE ADMIN ===== */
+// Menambahkan kolom "Pilihan E" dan opsi "E" pada form admin secara otomatis
+// (jadi file HTML tidak perlu diubah). Kalau di HTML sudah ada #fE, bagian ini dilewati.
+function ensureOptionE() {
+  const d = $("fD");
+  if (d && !$("fE")) {
+    const lab = document.createElement("label");
+    const anchor = d.closest("label");
+    if (anchor && anchor.className) lab.className = anchor.className;
+    lab.append("Pilihan E ");
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.id = "fE"; inp.className = d.className;
+    inp.placeholder = d.placeholder ? d.placeholder.replace(/\bD\b/, "E") : "";
+    lab.appendChild(inp);
+    if (anchor && !anchor.contains($("fA"))) anchor.after(lab); else d.after(lab);
+  }
+  const sel = $("fCorrect");
+  if (sel && ![...sel.options].some((o) => o.value === "4")) {
+    const last = sel.options[sel.options.length - 1];
+    const op = document.createElement("option");
+    op.value = "4";
+    const txt = last ? last.textContent.replace(/\bD\b/, "E") : "E";
+    op.textContent = txt === (last && last.textContent) ? "E" : txt;
+    sel.appendChild(op);
+  }
+}
+function toggleType() {
+  const mc = $("fType").value === "mc";
+  $("mcFields").classList.toggle("hidden", !mc);
+  $("fillFields").classList.toggle("hidden", mc);
+}
+function renderList() {
+  $("listTitle").textContent = `Daftar pertanyaan (${questions.length})`;
+  $("qList").innerHTML = questions.map((q, i) =>
+    `<li><strong>${esc(q.q)}</strong><div class="meta">${q.t === "mc" ? "Pilihan ganda. Jawaban: " + LETTERS[q.a] + ". " + esc(q.o[q.a]) : "Isian singkat. Jawaban: " + esc(q.a)}</div>
+     <button type="button" data-edit="${i}">Ubah</button><button type="button" class="danger" data-del="${i}">Hapus</button></li>`).join("");
+}
+function resetForm() {
+  $("qForm").reset(); editIndex = -1; toggleType();
+  $("btnSave").textContent = "Tambah pertanyaan"; $("btnCancel").classList.add("hidden");
+}
+function saveForm(e) {
+  e.preventDefault();
+  const q = $("fQ").value.trim(), exp = $("fExp").value.trim();
+  if (!q) return alert("Isi pertanyaannya dulu.");
+  let item;
+  if ($("fType").value === "mc") {
+    const o = [$("fA").value, $("fB").value, $("fC").value, $("fD").value, $("fE").value].map((s) => s.trim());
+    if (o.some((s) => !s)) return alert("Isi kelima pilihan jawaban (A sampai E).");
+    item = { t: "mc", q, o, a: +$("fCorrect").value, e: exp };
+  } else {
+    const a = $("fAns").value.trim();
+    if (!a) return alert("Isi jawaban yang benar.");
+    item = { t: "fill", q, a, e: exp };
+  }
+  if (editIndex >= 0) questions[editIndex] = item; else questions.push(item);
+  saveQuestions(); renderList(); resetForm();
+}
+function editQuestion(i) {
+  const q = questions[i]; editIndex = i;
+  $("fType").value = q.t; toggleType();
+  $("fQ").value = q.q; $("fExp").value = q.e || "";
+  if (q.t === "mc") { [$("fA").value, $("fB").value, $("fC").value, $("fD").value, $("fE").value] = q.o; $("fCorrect").value = q.a; }
+  else $("fAns").value = q.a;
+  $("btnSave").textContent = "Simpan perubahan"; $("btnCancel").classList.remove("hidden");
+  $("fQ").focus();
+}
+
+/* ===== EVENT ===== */
+$("numPlayers").onchange = renderNameInputs;
+$("nameInputs").addEventListener("input", (e) => {
+  if (!e.target.classList.contains("pname-in")) return;
+  const idx = [...document.querySelectorAll(".pname-in")].indexOf(e.target);
+  e.target.closest(".nrow").querySelector(".nfig").innerHTML = pieceSVG(idx, e.target.value, 38);
+});
+$("btnStart").onclick = () => startGame([...document.querySelectorAll(".pname-in")].map((x, i) => x.value.trim() || "Pemain " + (i + 1)));
+$("btnRoll").onclick = rollDice;
+$("btnQuit").onclick = () => { hideModal(); showView("setup"); };
+$("btnSound").onclick = () => {
+  Sound.set(!Sound.isOn());
+  $("btnSound").textContent = "Suara: " + (Sound.isOn() ? "hidup" : "mati");
+  $("btnSound").setAttribute("aria-pressed", String(Sound.isOn()));
+};
+$("btnAdmin").onclick = () => {
+  if (busy) return;
+  if (prompt("Masukkan PIN admin:") !== ADMIN_PIN) return alert("PIN salah.");
+  showView("admin"); renderList(); resetForm();
+};
+$("btnExitAdmin").onclick = () => showView("setup");
+$("fType").onchange = toggleType;
+$("qForm").onsubmit = saveForm;
+$("btnCancel").onclick = resetForm;
+$("qList").onclick = (e) => {
+  if (e.target.dataset.edit !== undefined) editQuestion(+e.target.dataset.edit);
+  if (e.target.dataset.del !== undefined && confirm("Hapus pertanyaan ini?")) { questions.splice(+e.target.dataset.del, 1); saveQuestions(); renderList(); resetForm(); }
+};
+$("btnReset").onclick = () => {
+  if (!confirm("Ganti semua soal dengan soal awal (Orde Baru)?")) return;
+  questions = JSON.parse(JSON.stringify(DEFAULT_Q)); saveQuestions(); renderList(); resetForm();
+};
+$("btnExport").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(questions, null, 2)], { type: "application/json" }));
+  a.download = "soal-ular-tangga.json"; a.click();
+};
+$("fileImport").onchange = (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      if (!Array.isArray(data) || !data.length || !data.every(validQ)) throw 0;
+      questions = data; saveQuestions(); renderList();
+    } catch (err) { alert("File JSON tidak valid (pilihan ganda harus punya 5 pilihan A-E)."); }
+  };
+  r.readAsText(f); e.target.value = "";
+};
+
+$("btnSound").textContent = "Suara: " + (Sound.isOn() ? "hidup" : "mati");
+$("btnSound").setAttribute("aria-pressed", String(Sound.isOn()));
+ensureOptionE();
+renderNameInputs();
+showView("setup");
